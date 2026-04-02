@@ -422,26 +422,14 @@ This worked and listed my local Ollama/HF models.
 
 ## Comparison and evaluation
 
-1. Ollama transport:
-- Easy to use.
-- Worked technically.
-- Factual correctness was inconsistent across tested models.
+| Area | What worked | What failed / limitation | Key takeaway |
+|---|---|---|---|
+| Ollama transport | Easy to use; worked technically after runtime fix | Factual correctness was inconsistent across tested models | Runtime success does not guarantee answer quality |
+| Hugging Face transport | Reliable in my setup | Open prompt still produced incorrect answer | Prompt constraints significantly improved correctness |
+| OCI transport | Could test OCI flow and local conversion attempts | Public OCI refs were unavailable; local OCI run hit mount error | OCI was the most difficult transport in my environment |
+| Model behavior | Some prompts produced valid output | Bigger parameter count did not guarantee correctness | Prompt structure (`--temp 0` + constrained format) helped |
 
-2. Hugging Face transport:
-- Also easy and reliable in my environment.
-- With better prompt constraints, returned correct Fedora foundations.
-
-3. OCI transport:
-- Most difficult in my setup.
-- Public OCI references tested were unavailable.
-- Local OCI conversion/run exposed additional errors.
-
-4. Model behavior:
-- Bigger parameter count did not guarantee correct answer.
-- Prompt structure (`--temp 0` + constrained answer format) improved results significantly.
-
-5. Official expected answer used for evaluation:
-- `Freedom, Friends, Features, First`
+**Official expected answer used for evaluation:** `Freedom, Friends, Features, First`
 
 ---
 
