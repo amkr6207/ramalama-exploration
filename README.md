@@ -42,6 +42,7 @@ podman --version
 ```
 **Output:**
 - `podman version 4.9.3`
+
 ![Podman version](images/method-1-container/02-podman-version.png)
 
 ### Step 3: Pull Python container image
@@ -394,6 +395,7 @@ ramalama run oci://localhost/gemma2b:latest "What are the Four Foundations of th
 `ramalama list` crashed with:
 
 - `AttributeError: 'str' object has no attribute 'timestamp'`
+
 ![ramalama list AttributeError](images/method-2-host-venv/21-ramalama-list-attributeerror-str-no-timestamp.png)
 
 **Workaround:**
