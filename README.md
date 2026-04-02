@@ -26,43 +26,83 @@ I first tried running RamaLama inside a generic Python container.
 ```bash
 sudo apt install podman -y
 ```
-![Podman installation](images/01-install-podman.png)
+![Podman installation](images/method-1-container/01-install-podman.png)
 
 ```bash
 podman --version
 ```
-![Podman version](images/02-podman-version.png)
+![Podman version](images/method-1-container/02-podman-version.png)
 
 ```bash
 podman pull docker.io/library/python:3.12
 ```
-![Pull Python container image](images/03-podman-pull-python-3.12..png)
+![Pull Python container image](images/method-1-container/03-podman-pull-python-3.12.png)
 
 ```bash
 podman run -it python:3.12 bash
 ```
+![Run Python container shell](images/method-1-container/04-podman-run-python-3.12-shell.png)
 
 ```bash
 pip install ramalama
 ```
+![Install RamaLama inside container](images/method-1-container/05-pip-install-ramalama.png)
 
 ```bash
 ramalama version
 ```
+![RamaLama version in container](images/method-1-container/06-ramalama-version-in-container.png)
 
-Then I tried pulling/running an Ollama model:
+Note: I initially ran `ramalama --version`, but it returned an error in this container flow. Then I used `ramalama version`, which worked.
+
+### Installed Ollama inside the container
+
+```bash
+curl -fsSL https://ollama.com/install.sh | sh
+```
+![Ollama installer failed due to missing zstd](images/method-1-container/07-ollama-install-missing-zstd.png)
+
+Output:
+- Installer failed first because `zstd` was missing.
+
+```bash
+apt-get install -y zstd
+```
+
+Output:
+- Initially failed with `Unable to locate package zstd`.
+
+Then I ran:
+
+```bash
+apt-get update
+apt-get install -y zstd
+curl -fsSL https://ollama.com/install.sh | sh
+ollama --version
+```
+![Ollama version in container](images/method-1-container/08-ollama-version-in-container.png)
+
+Result:
+- Ollama installed successfully inside the container.
+
+### Then I tried pulling/running an Ollama model
 
 ```bash
 ramalama pull ollama://gemma:2b
+```
+![Pull ollama://gemma:2b inside container](images/method-1-container/09-ramalama-pull-ollama-gemma-2b.png)
+
+```bash
 ramalama run ollama://gemma:2b "What are the Four Foundations of the Fedora project?"
 ```
+![Run ollama://gemma:2b inside container](images/method-1-container/10-ramalama-run-ollama-gemma-2b.png)
 
 Observed issue:
 - `Error: [Errno 2] No such file or directory: 'llama-server'`
 
 Analysis:
 - Running RamaLama inside a generic Python container was not reliable for my setup.
-- I moved to host-based execution (next approach).
+- I moved to host-based execution, where troubleshooting (`--nocontainer` vs container mode with `crun`) was clearer and more reproducible.
 
 ---
 
@@ -70,10 +110,20 @@ Analysis:
 
 I switched to host terminal and used `venv` environment with Podman available.
 
+Since I am using Linux Mint, Python 3 is preinstalled. I created and activated a virtual environment, then installed RamaLama inside it:
+
+```bash
+python3 -m venv ramalama-env
+source ramalama-env/bin/activate
+pip install ramalama
+```
+![Install RamaLama inside venv](images/method-2-host-venv/01-pip-install-ramalama-in-venv.png)
+
 ### Version check
 ```bash
 ramalama version
 ```
+![RamaLama version in venv](images/method-2-host-venv/02-ramalama-version-in-venv.png)
 
 Output:
 - `ramalama version 0.18.0`
@@ -83,26 +133,82 @@ Output:
 ## Transport 1: Ollama (`ollama://`)
 
 ### Pull
+Initial attempt (failed):
+
+```bash
+ramalama pull ollama://gemma:2b --nocontainer
+```
+![Pull with --nocontainer argument error](images/method-2-host-venv/03-ollama-pull-gemma-2b-with-nocontainer-error.png)
+
+This failed with:
+- `ramalama: error: unrecognized arguments: --nocontainer`
+
+Reason:
+- `--nocontainer` is a global flag and must appear before the subcommand.
+- Also, `pull` does not need `--nocontainer`; it is mainly relevant for `run/serve`.
+
 ```bash
 ramalama pull ollama://gemma:2b
 ```
+![Successful pull of ollama://gemma:2b](images/method-2-host-venv/04-ollama-pull-gemma-2b-success.png)
 
 Output:
-- `Using cached ollama://library/gemma:2b ...` (after successful download)
+- `Downloaded ollama://library/gemma:2b successfully (1.56 GB).`
 
 ### Run
 ```bash
 ramalama run ollama://gemma:2b "What are the Four Foundations of the Fedora project?"
 ```
+![runc SIGSEGV error during gemma run](images/method-2-host-venv/05-ollama-run-gemma-2b-runc-sigsegv-error.png)
+Output (error summary):
+- `Error: container create failed ...`
+- `fatal error: fault [SIGSEGV]` from `runc`
+- `Error: Failed to serve model gemma`
 
-Output (model answer was incorrect):
-- Returned unrelated foundations like technical stability/security/scalability/user experience.
+Analysis:
+- This failure was from container runtime (`runc`) crash, not prompt syntax.
+- I then tested two different recovery paths.
+
+Alternate attempt with `--nocontainer`:
+
+```bash
+ramalama --nocontainer run ollama://gemma:2b "What are the Four Foundations of the Fedora project?"
+```
+![nocontainer run failed due to missing llama-server](images/method-2-host-venv/06-ollama-run-gemma-2b-nocontainer-llama-server-error.png)
+
+Output:
+- `Error: [Errno 2] No such file or directory: 'llama-server'`
+
+Reason:
+- `--nocontainer` requires a local `llama-server` binary on host.
+- Since `llama-server` was not installed/in `PATH`, this path failed.
+
+To address the runtime crash, I installed `crun` and forced RamaLama to use it:
+
+```bash
+sudo apt install -y crun
+```
+![Installed crun runtime](images/method-2-host-venv/07-install-crun.png)
+
+Why `crun`:
+- `podman` is the container engine, and `crun` is the low-level OCI runtime it uses to start containers.
+- They are related as: `RamaLama -> Podman -> crun/runc`.
+
+```bash
+ramalama run --oci-runtime crun ollama://gemma:2b "What are the Four Foundations of the Fedora project?"
+```
+![gemma run with --oci-runtime crun](images/method-2-host-venv/08-ollama-run-gemma-2b-with-oci-runtime-crun.png)
+
+Output:
+- Command executed successfully, but the model response was factually incorrect for Fedora Foundations.
 
 I also tested:
 
 ```bash
+ramalama pull ollama://llama3.2:3b
 ramalama run ollama://llama3.2:3b "What are the Four Foundations of the Fedora project? Give only the official four names."
 ```
+![Pull and run llama3.2:3b](images/method-2-host-venv/09-ollama-pull-and-run-llama3.2-3b-foundations.png)
 
 Output:
 - `I cannot verify the names of the official four foundations of the Fedora project.`
@@ -110,8 +216,18 @@ Output:
 And:
 
 ```bash
+ramalama pull ollama://granite3.1-dense:2b
+```
+![Pull granite3.1-dense:2b](images/method-2-host-venv/10-ollama-pull-granite3.1-dense-2b.png)
+
+```bash
 ramalama run --temp 0 ollama://granite3.1-dense:2b "Give only the official four Fedora Foundations names."
 ```
+![Run granite3.1-dense:2b with --temp 0](images/method-2-host-venv/11-ollama-run-granite3.1-dense-2b-temp-0-foundations.png)
+
+Why `--temp 0`:
+- I used `--temp 0` to reduce randomness and make the answer deterministic.
+- Without `--temp 0`, responses can vary more between runs and may be more creative/noisy, which is not ideal for factual checking.
 
 Output:
 - Still incorrect.
@@ -127,11 +243,13 @@ Finding:
 ```bash
 ramalama pull huggingface://Qwen/Qwen2.5-3B-Instruct-GGUF/qwen2.5-3b-instruct-q4_k_m.gguf
 ```
+![Pull Qwen2.5-3B Instruct from Hugging Face](images/method-2-host-venv/12-huggingface-pull-qwen2.5-3b-instruct-gguf.png)
 
 ### Run (open prompt)
 ```bash
 ramalama run --temp 0 huggingface://Qwen/Qwen2.5-3B-Instruct-GGUF/qwen2.5-3b-instruct-q4_k_m.gguf "Give only the official four Fedora Foundations names."
 ```
+![Run Qwen2.5-3B with open prompt](images/method-2-host-venv/13-huggingface-run-qwen2.5-3b-temp-0-foundations-open-prompt.png)
 
 Output:
 - Incorrect names.
@@ -140,6 +258,7 @@ Output:
 ```bash
 ramalama run --temp 0 huggingface://Qwen/Qwen2.5-3B-Instruct-GGUF/qwen2.5-3b-instruct-q4_k_m.gguf "What are Fedora's Four Foundations? Answer exactly as: Freedom, Friends, Features, First."
 ```
+![Run Qwen2.5-3B with constrained prompt](images/method-2-host-venv/14-huggingface-run-qwen2.5-3b-temp-0-foundations-constrained-prompt.png)
 
 Output:
 - `Freedom, Friends, Features, First.`
@@ -156,9 +275,18 @@ I tested multiple OCI registry references:
 
 ```bash
 ramalama pull oci://quay.io/ramalama/tinyllama
+```
+![OCI pull failed: quay.io/ramalama/tinyllama](images/method-2-host-venv/15-oci-pull-quay-ramalama-tinyllama-does-not-exist.png)
+
+```bash
 ramalama pull oci://quay.io/rhatdan/tiny:latest
+```
+![OCI pull failed: quay.io/rhatdan/tiny:latest](images/method-2-host-venv/16-oci-pull-quay-rhatdan-tiny-latest-does-not-exist.png)
+
+```bash
 ramalama pull oci://quay.io/mmortari/gguf-py-example/v1/example.gguf
 ```
+![OCI pull failed: quay.io/mmortari/gguf-py-example](images/method-2-host-venv/17-oci-pull-quay-mmortari-gguf-py-example-does-not-exist.png)
 
 Outputs:
 - All returned `does not exist` in my environment.
@@ -168,6 +296,7 @@ Then I tried local OCI conversion:
 ```bash
 ramalama convert ollama://gemma:2b oci://gemma2b:latest
 ```
+![OCI convert failed with manifest error and fallback tagging](images/method-2-host-venv/18-oci-convert-gemma2b-manifest-error-tagging-build-instead.png)
 
 Output:
 - Manifest creation error:
@@ -180,6 +309,7 @@ I confirmed a local image existed:
 ```bash
 podman images | grep -Ei "gemma2b|smollm|oci"
 ```
+![Podman images showing localhost/gemma2b:latest](images/method-2-host-venv/19-podman-images-show-localhost-gemma2b-latest.png)
 
 Output:
 - `localhost/gemma2b latest ...`
@@ -189,6 +319,7 @@ Then tried running:
 ```bash
 ramalama run oci://localhost/gemma2b:latest "What are the Four Foundations of the Fedora project? Give only the official four names."
 ```
+![OCI run failed with subpath invalid mount option](images/method-2-host-venv/20-oci-run-localhost-gemma2b-subpath-invalid-mount-option.png)
 
 Output:
 - `Error: subpath: invalid mount option`
@@ -204,12 +335,18 @@ Finding:
 `ramalama list` crashed with:
 
 - `AttributeError: 'str' object has no attribute 'timestamp'`
+![ramalama list AttributeError](images/method-2-host-venv/21-ramalama-list-attributeerror-str-no-timestamp.png)
 
 Workaround:
 
 ```bash
 ramalama --nocontainer list
 ```
+![ramalama --nocontainer list workaround succeeded](images/method-2-host-venv/22-ramalama-nocontainer-list-workaround-success.png)
+
+Why this worked:
+- This issue appeared after OCI convert attempts, likely due to a container-image metadata type mismatch (`modified` value).
+- `ramalama --nocontainer list` bypassed container-image metadata and listed only model-store entries.
 
 This worked and listed my local Ollama/HF models.
 
@@ -242,6 +379,6 @@ This worked and listed my local Ollama/HF models.
 
 ## Does RamaLama make working with AI "boring"?
 
-In my opinion: yes, in a good way for workflow consistency.
-The same CLI flow (`pull`, `run`, transport prefixes) makes experimentation simple.
-At the same time, model quality and runtime edge cases are still real, so debugging skill is still required.
+Yes, in the way good tooling should. RamaLama gave me a repeatable workflow across transports (`pull`, `run`, and URI-based model selection), so I could focus more on testing and less on setup. Even when things failed, the command structure stayed consistent, which made debugging easier.
+
+At the same time, this task proved that "easy to run" is not the same as "always correct." I hit real runtime issues (`runc` crash, missing `llama-server` in `--nocontainer`, OCI availability/mount problems), and I also saw that model answers could be wrong unless I improved prompt constraints. So my final view is: RamaLama makes the workflow boring in a good way, but model evaluation and system troubleshooting still require careful thinking and debugging.
