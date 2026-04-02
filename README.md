@@ -28,36 +28,42 @@ I documented commands, outputs, failures, and reasoning for both approaches. The
 I first tried running RamaLama inside a generic Python container.
 
 ### Step 1: Install Podman
+Goal: Install container engine required for RamaLama container workflows.
 ```bash
 sudo apt install podman -y
 ```
 ![Podman installation](images/method-1-container/01-install-podman.png)
 
 ### Step 2: Verify Podman installation
+Goal: Confirm Podman is installed and available in `PATH`.
 ```bash
 podman --version
 ```
 ![Podman version](images/method-1-container/02-podman-version.png)
 
 ### Step 3: Pull Python container image
+Goal: Prepare a clean container to test RamaLama inside container first.
 ```bash
 podman pull docker.io/library/python:3.12
 ```
 ![Pull Python container image](images/method-1-container/03-podman-pull-python-3.12.png)
 
 ### Step 4: Start Python container shell
+Goal: Enter the container and run RamaLama setup commands there.
 ```bash
 podman run -it python:3.12 bash
 ```
 ![Run Python container shell](images/method-1-container/04-podman-run-python-3.12-shell.png)
 
 ### Step 5: Install RamaLama inside container
+Goal: Install RamaLama CLI in container for Method 1 testing.
 ```bash
 pip install ramalama
 ```
 ![Install RamaLama inside container](images/method-1-container/05-pip-install-ramalama.png)
 
 ### Step 6: Verify RamaLama in container
+Goal: Verify RamaLama command works after installation.
 ```bash
 ramalama version
 ```
@@ -66,6 +72,7 @@ ramalama version
 Note: I initially ran `ramalama --version`, but it returned an error in this container flow. Then I used `ramalama version`, which worked.
 
 ### Step 7: Install Ollama inside the container
+Goal: Install Ollama backend inside container before pulling Ollama transport models.
 
 ```bash
 curl -fsSL https://ollama.com/install.sh | sh
@@ -74,6 +81,7 @@ curl -fsSL https://ollama.com/install.sh | sh
 
 Output:
 - Installer failed first because `zstd` was missing.
+- Key raw line: `ERROR: This version requires zstd for extraction.`
 
 ```bash
 apt-get install -y zstd
@@ -81,6 +89,7 @@ apt-get install -y zstd
 
 Output:
 - Initially failed with `Unable to locate package zstd`.
+- Key raw line: `E: Unable to locate package zstd`
 
 Then I ran:
 
@@ -94,8 +103,10 @@ ollama --version
 
 Result:
 - Ollama installed successfully inside the container.
+- Key raw line: `ollama version ...`
 
 ### Step 8: Pull and run model inside container
+Goal: Validate whether model pull/run works in containerized Method 1 flow.
 
 ```bash
 ramalama pull ollama://gemma:2b
@@ -109,6 +120,7 @@ ramalama run ollama://gemma:2b "What are the Four Foundations of the Fedora proj
 
 Observed issue:
 - `Error: [Errno 2] No such file or directory: 'llama-server'`
+- Key raw line: `ramalama run ... -> No such file or directory: 'llama-server'`
 
 Analysis:
 - Running RamaLama inside a generic Python container was not reliable for my setup.
@@ -123,18 +135,21 @@ I switched to host terminal and used `venv` environment with Podman available.
 Since I am using Linux Mint, Python 3 is preinstalled. I created and activated a virtual environment, then installed RamaLama inside it:
 
 ### Step 1: Create and activate virtual environment
+Goal: Create isolated Python environment on host for reliable RamaLama testing.
 ```bash
 python3 -m venv ramalama-env
 source ramalama-env/bin/activate
 ```
 
 ### Step 2: Install RamaLama in virtual environment
+Goal: Install RamaLama in host `venv`.
 ```bash
 pip install ramalama
 ```
 ![Install RamaLama inside venv](images/method-2-host-venv/01-pip-install-ramalama-in-venv.png)
 
 ### Step 3: Verify RamaLama version
+Goal: Confirm host setup is ready before transport testing.
 ```bash
 ramalama version
 ```
@@ -148,6 +163,7 @@ Output:
 ## Transport 1: Ollama (`ollama://`)
 
 ### Step 4: Pull model from Ollama transport
+Goal: Pull first model via Ollama transport as required by assignment.
 Initial attempt (failed):
 
 ```bash
@@ -157,6 +173,7 @@ ramalama pull ollama://gemma:2b --nocontainer
 
 This failed with:
 - `ramalama: error: unrecognized arguments: --nocontainer`
+- Key raw line: `usage: ramalama ... error: unrecognized arguments: --nocontainer`
 
 Reason:
 - `--nocontainer` is a global flag and must appear before the subcommand.
@@ -169,8 +186,10 @@ ramalama pull ollama://gemma:2b
 
 Output:
 - `Downloaded ollama://library/gemma:2b successfully (1.56 GB).`
+- Key raw lines: `Downloading ollama://library/gemma:2b ...`, `100% ... 1.56 GB`
 
 ### Step 5: Run model from Ollama transport
+Goal: Run pulled Ollama model with Fedora Foundations prompt.
 ```bash
 ramalama run ollama://gemma:2b "What are the Four Foundations of the Fedora project?"
 ```
@@ -179,6 +198,7 @@ Output (error summary):
 - `Error: container create failed ...`
 - `fatal error: fault [SIGSEGV]` from `runc`
 - `Error: Failed to serve model gemma`
+- Key raw line: `fatal error: fault [signal SIGSEGV ...]`
 
 Analysis:
 - This failure was from container runtime (`runc`) crash, not prompt syntax.
@@ -193,12 +213,14 @@ ramalama --nocontainer run ollama://gemma:2b "What are the Four Foundations of t
 
 Output:
 - `Error: [Errno 2] No such file or directory: 'llama-server'`
+- Key raw line: `No such file or directory: 'llama-server'`
 
 Reason:
 - `--nocontainer` requires a local `llama-server` binary on host.
 - Since `llama-server` was not installed/in `PATH`, this path failed.
 
 ### Step 6: Resolve runtime issue using `crun`
+Goal: Bypass `runc` crash by switching OCI runtime backend.
 To address the runtime crash, I installed `crun` and forced RamaLama to use it:
 
 ```bash
@@ -217,8 +239,10 @@ ramalama run --oci-runtime crun ollama://gemma:2b "What are the Four Foundations
 
 Output:
 - Command executed successfully, but the model response was factually incorrect for Fedora Foundations.
+- Key raw line: model returned non-official foundations (not `Freedom, Friends, Features, First`).
 
 ### Step 7: Compare additional Ollama models
+Goal: Compare answer quality across other Ollama models.
 I also tested:
 
 ```bash
@@ -248,6 +272,7 @@ Why `--temp 0`:
 
 Output:
 - Still incorrect.
+- Key raw line example: model returned non-official labels.
 
 Finding:
 - Ollama transport worked technically, but small local models were inconsistent on this Fedora-specific factual question.
@@ -257,12 +282,14 @@ Finding:
 ## Transport 2: Hugging Face (`huggingface://`)
 
 ### Step 8: Pull model from Hugging Face transport
+Goal: Test second transport with a different model source.
 ```bash
 ramalama pull huggingface://Qwen/Qwen2.5-3B-Instruct-GGUF/qwen2.5-3b-instruct-q4_k_m.gguf
 ```
 ![Pull Qwen2.5-3B Instruct from Hugging Face](images/method-2-host-venv/12-huggingface-pull-qwen2.5-3b-instruct-gguf.png)
 
 ### Step 9: Run with open prompt
+Goal: Evaluate baseline factual quality with less constrained prompt.
 ```bash
 ramalama run --temp 0 huggingface://Qwen/Qwen2.5-3B-Instruct-GGUF/qwen2.5-3b-instruct-q4_k_m.gguf "Give only the official four Fedora Foundations names."
 ```
@@ -272,6 +299,7 @@ Output:
 - Incorrect names.
 
 ### Step 10: Run with constrained prompt
+Goal: Check whether prompt constraints improve factual correctness.
 ```bash
 ramalama run --temp 0 huggingface://Qwen/Qwen2.5-3B-Instruct-GGUF/qwen2.5-3b-instruct-q4_k_m.gguf "What are Fedora's Four Foundations? Answer exactly as: Freedom, Friends, Features, First."
 ```
@@ -289,6 +317,7 @@ Finding:
 ## Transport 3: OCI Registry (`oci://`)
 
 ### Step 11: Try pulling models from OCI registry
+Goal: Test third transport (`oci://`) using public references.
 I tested multiple OCI registry references:
 
 ```bash
@@ -308,8 +337,10 @@ ramalama pull oci://quay.io/mmortari/gguf-py-example/v1/example.gguf
 
 Outputs:
 - All returned `does not exist` in my environment.
+- Key raw line: `Error: ... does not exist.`
 
 ### Step 12: Try local OCI conversion
+Goal: Create local OCI model artifact as OCI fallback path.
 Then I tried local OCI conversion:
 
 ```bash
@@ -324,6 +355,7 @@ Output:
   - `Tagging build instead`
 
 ### Step 13: Verify local OCI image
+Goal: Confirm converted/tagged image exists in Podman local store.
 I confirmed a local image existed:
 
 ```bash
@@ -335,6 +367,7 @@ Output:
 - `localhost/gemma2b latest ...`
 
 ### Step 14: Run local OCI model
+Goal: Validate whether local OCI model can run end-to-end.
 Then tried running:
 
 ```bash
@@ -354,6 +387,7 @@ Finding:
 ## Additional debugging finding (`ramalama list`)
 
 ### Step 15: Debug `ramalama list` crash
+Goal: Investigate and work around `ramalama list` failure.
 `ramalama list` crashed with:
 
 - `AttributeError: 'str' object has no attribute 'timestamp'`
