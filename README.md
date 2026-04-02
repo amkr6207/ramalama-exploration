@@ -1,21 +1,26 @@
 # [Outreachy 2026] RamaLama exploration on Linux Mint 22
 
+## Introduction
+This document is my solution for Outreachy issue #124: **"[Outreachy 2026] RamaLama: learn how RamaLama makes working with AI boring."**  
+Issue link: https://forge.fedoraproject.org/commops/interns/issues/124  
+The goal was to install RamaLama, verify the version, pull and run models using different transports, and analyze both successful results and failures with reasoning.
+
 ## Summary
-Initially I planned to solve this assignment in two ways:
+Initially, I approached this assignment in two ways:
 1. Inside a Podman container
 2. On host using Python `venv` + Podman
 
-I completed both explorations and documented commands, outputs, failures, and reasoning.
+I documented commands, outputs, failures, and reasoning for both approaches. The container-first path helped me identify environment limitations early, while the host + `venv` path became the stable workflow for deeper testing. I also compared three RamaLama transports (Ollama, Hugging Face, and OCI), including success cases, runtime errors, and workarounds.
 
 ---
 
 ## System setup
-- OS: Linux Mint 22.3
-- RAM: 8 GB
-- CPU: Intel i5 (8th gen)
-- Storage: 512 GB SSD
-- Container engine: Podman
-- RamaLama: 0.18.0
+- **OS:** Linux Mint 22.3
+- **Container Engine:** Podman 4.9.3
+- **RAM:** 8 GB
+- **Python:** 3.12.3
+- **GPU:** CPU-only
+- **RamaLama:** 0.18.0
 
 ---
 
