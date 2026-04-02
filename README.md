@@ -110,7 +110,7 @@ ollama --version
 
 **Result:**
 - Ollama installed successfully inside the container.
-- Key line: `ollama version ...`
+- Key line: `ollama version 0.19.0`
 
 ### Step 8: Pull and run model inside container
 **Goal:** Validate whether model pull/run works in containerized Method 1 flow.
@@ -220,7 +220,6 @@ ramalama --nocontainer run ollama://gemma:2b "What are the Four Foundations of t
 
 **Output:**
 - `Error: [Errno 2] No such file or directory: 'llama-server'`
-- Key line: `No such file or directory: 'llama-server'`
 
 **Reason:**
 - `--nocontainer` requires a local `llama-server` binary on host.
@@ -250,7 +249,8 @@ ramalama run --oci-runtime crun ollama://gemma:2b "What are the Four Foundations
 
 ### Step 7: Compare additional Ollama models
 **Goal:** Compare answer quality across other Ollama models.
-I also tested:
+
+**Test A: `llama3.2:3b`**
 
 ```bash
 ramalama pull ollama://llama3.2:3b
@@ -261,7 +261,7 @@ ramalama run ollama://llama3.2:3b "What are the Four Foundations of the Fedora p
 **Output:**
 - `I cannot verify the names of the official four foundations of the Fedora project.`
 
-And:
+**Test B: `granite3.1-dense:2b`**
 
 ```bash
 ramalama pull ollama://granite3.1-dense:2b
@@ -279,7 +279,6 @@ ramalama run --temp 0 ollama://granite3.1-dense:2b "Give only the official four 
 
 **Output:**
 - Still incorrect.
-- Key line: model returned non-official labels.
 
 **Finding:**
 - Ollama transport worked technically, but small local models were inconsistent on this Fedora-specific factual question.
@@ -325,17 +324,22 @@ ramalama run --temp 0 huggingface://Qwen/Qwen2.5-3B-Instruct-GGUF/qwen2.5-3b-ins
 
 ### Step 11: Try pulling models from OCI registry
 **Goal:** Test third transport (`oci://`) using public references.
-I tested multiple OCI registry references:
+
+**Test A: `oci://quay.io/ramalama/tinyllama`**
 
 ```bash
 ramalama pull oci://quay.io/ramalama/tinyllama
 ```
 ![OCI pull failed: quay.io/ramalama/tinyllama](images/method-2-host-venv/15-oci-pull-quay-ramalama-tinyllama-does-not-exist.png)
 
+**Test B: `oci://quay.io/rhatdan/tiny:latest`**
+
 ```bash
 ramalama pull oci://quay.io/rhatdan/tiny:latest
 ```
 ![OCI pull failed: quay.io/rhatdan/tiny:latest](images/method-2-host-venv/16-oci-pull-quay-rhatdan-tiny-latest-does-not-exist.png)
+
+**Test C: `oci://quay.io/mmortari/gguf-py-example/v1/example.gguf`**
 
 ```bash
 ramalama pull oci://quay.io/mmortari/gguf-py-example/v1/example.gguf
