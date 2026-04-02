@@ -6,7 +6,7 @@ This document is my solution for issue [#124](https://forge.fedoraproject.org/co
 **Assignment goal:** install RamaLama, verify the version, pull and run models using different transports, and analyze both successful results and failures with reasoning.
 
 ## Summary
-I completed this assignment using two approaches:
+I completed this assignment using **two approaches**:
 1. Inside a Podman container
 2. On host using Python `venv` + Podman
 
@@ -26,7 +26,7 @@ I documented exact commands, outputs, failures, and troubleshooting for both. Th
 
 ## Approach 1: Running inside Podman container (initial attempt)
 
-I first tried running RamaLama inside a generic Python container.
+I first tried running RamaLama inside a generic Python container image (`python:3.12`) using Podman.
 
 ### Step 1: Install Podman
 **Goal:** Install container engine required for RamaLama container workflows.
@@ -40,6 +40,8 @@ sudo apt install podman -y
 ```bash
 podman --version
 ```
+**Output:**
+- `podman version 4.9.3`
 ![Podman version](images/method-1-container/02-podman-version.png)
 
 ### Step 3: Pull Python container image
