@@ -178,7 +178,7 @@ ramalama pull ollama://gemma:2b --nocontainer
 ```
 ![Pull with --nocontainer argument error](images/method-2-host-venv/03-ollama-pull-gemma-2b-with-nocontainer-error.png)
 
-This failed with:
+**Output:**
 - `ramalama: error: unrecognized arguments: --nocontainer`
 - Key line: `usage: ramalama ... error: unrecognized arguments: --nocontainer`
 
@@ -245,7 +245,7 @@ ramalama run --oci-runtime crun ollama://gemma:2b "What are the Four Foundations
 
 **Output:**
 - Command executed successfully, but the model response was factually incorrect for Fedora Foundations.
-- Key line: model returned non-official foundations (not `Freedom, Friends, Features, First`).
+- Model output did not match the official answer (`Freedom, Friends, Features, First`).
 
 ### Step 7: Compare additional Ollama models
 **Goal:** Compare answer quality across other Ollama models.
