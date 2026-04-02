@@ -1,9 +1,8 @@
 # [Outreachy 2026] RamaLama exploration on Linux Mint 22
 
 ## Introduction
-This document is my solution for Outreachy issue #124: **"[Outreachy 2026] RamaLama: learn how RamaLama makes working with AI boring."**  
-Issue link: https://forge.fedoraproject.org/commops/interns/issues/124  
-The goal was to install RamaLama, verify the version, pull and run models using different transports, and analyze both successful results and failures with reasoning.
+This document is my solution for issue [#124](https://forge.fedoraproject.org/commops/interns/issues/124): **[Outreachy 2026] RamaLama: learn how RamaLama makes working with AI boring**.  
+The goal was to install RamaLama, verify the **version, pull and run models** using different transports, and analyze both successful results and failures with reasoning.
 
 ## Summary
 Initially, I approached this assignment in two ways:
@@ -28,31 +27,37 @@ I documented commands, outputs, failures, and reasoning for both approaches. The
 
 I first tried running RamaLama inside a generic Python container.
 
+### Step 1: Install Podman
 ```bash
 sudo apt install podman -y
 ```
 ![Podman installation](images/method-1-container/01-install-podman.png)
 
+### Step 2: Verify Podman installation
 ```bash
 podman --version
 ```
 ![Podman version](images/method-1-container/02-podman-version.png)
 
+### Step 3: Pull Python container image
 ```bash
 podman pull docker.io/library/python:3.12
 ```
 ![Pull Python container image](images/method-1-container/03-podman-pull-python-3.12.png)
 
+### Step 4: Start Python container shell
 ```bash
 podman run -it python:3.12 bash
 ```
 ![Run Python container shell](images/method-1-container/04-podman-run-python-3.12-shell.png)
 
+### Step 5: Install RamaLama inside container
 ```bash
 pip install ramalama
 ```
 ![Install RamaLama inside container](images/method-1-container/05-pip-install-ramalama.png)
 
+### Step 6: Verify RamaLama in container
 ```bash
 ramalama version
 ```
@@ -60,7 +65,7 @@ ramalama version
 
 Note: I initially ran `ramalama --version`, but it returned an error in this container flow. Then I used `ramalama version`, which worked.
 
-### Installed Ollama inside the container
+### Step 7: Install Ollama inside the container
 
 ```bash
 curl -fsSL https://ollama.com/install.sh | sh
@@ -90,7 +95,7 @@ ollama --version
 Result:
 - Ollama installed successfully inside the container.
 
-### Then I tried pulling/running an Ollama model
+### Step 8: Pull and run model inside container
 
 ```bash
 ramalama pull ollama://gemma:2b
@@ -117,14 +122,19 @@ I switched to host terminal and used `venv` environment with Podman available.
 
 Since I am using Linux Mint, Python 3 is preinstalled. I created and activated a virtual environment, then installed RamaLama inside it:
 
+### Step 1: Create and activate virtual environment
 ```bash
 python3 -m venv ramalama-env
 source ramalama-env/bin/activate
+```
+
+### Step 2: Install RamaLama in virtual environment
+```bash
 pip install ramalama
 ```
 ![Install RamaLama inside venv](images/method-2-host-venv/01-pip-install-ramalama-in-venv.png)
 
-### Version check
+### Step 3: Verify RamaLama version
 ```bash
 ramalama version
 ```
@@ -137,7 +147,7 @@ Output:
 
 ## Transport 1: Ollama (`ollama://`)
 
-### Pull
+### Step 4: Pull model from Ollama transport
 Initial attempt (failed):
 
 ```bash
@@ -160,7 +170,7 @@ ramalama pull ollama://gemma:2b
 Output:
 - `Downloaded ollama://library/gemma:2b successfully (1.56 GB).`
 
-### Run
+### Step 5: Run model from Ollama transport
 ```bash
 ramalama run ollama://gemma:2b "What are the Four Foundations of the Fedora project?"
 ```
@@ -188,6 +198,7 @@ Reason:
 - `--nocontainer` requires a local `llama-server` binary on host.
 - Since `llama-server` was not installed/in `PATH`, this path failed.
 
+### Step 6: Resolve runtime issue using `crun`
 To address the runtime crash, I installed `crun` and forced RamaLama to use it:
 
 ```bash
@@ -207,6 +218,7 @@ ramalama run --oci-runtime crun ollama://gemma:2b "What are the Four Foundations
 Output:
 - Command executed successfully, but the model response was factually incorrect for Fedora Foundations.
 
+### Step 7: Compare additional Ollama models
 I also tested:
 
 ```bash
@@ -244,13 +256,13 @@ Finding:
 
 ## Transport 2: Hugging Face (`huggingface://`)
 
-### Pull
+### Step 8: Pull model from Hugging Face transport
 ```bash
 ramalama pull huggingface://Qwen/Qwen2.5-3B-Instruct-GGUF/qwen2.5-3b-instruct-q4_k_m.gguf
 ```
 ![Pull Qwen2.5-3B Instruct from Hugging Face](images/method-2-host-venv/12-huggingface-pull-qwen2.5-3b-instruct-gguf.png)
 
-### Run (open prompt)
+### Step 9: Run with open prompt
 ```bash
 ramalama run --temp 0 huggingface://Qwen/Qwen2.5-3B-Instruct-GGUF/qwen2.5-3b-instruct-q4_k_m.gguf "Give only the official four Fedora Foundations names."
 ```
@@ -259,7 +271,7 @@ ramalama run --temp 0 huggingface://Qwen/Qwen2.5-3B-Instruct-GGUF/qwen2.5-3b-ins
 Output:
 - Incorrect names.
 
-### Run (constrained prompt)
+### Step 10: Run with constrained prompt
 ```bash
 ramalama run --temp 0 huggingface://Qwen/Qwen2.5-3B-Instruct-GGUF/qwen2.5-3b-instruct-q4_k_m.gguf "What are Fedora's Four Foundations? Answer exactly as: Freedom, Friends, Features, First."
 ```
@@ -276,6 +288,7 @@ Finding:
 
 ## Transport 3: OCI Registry (`oci://`)
 
+### Step 11: Try pulling models from OCI registry
 I tested multiple OCI registry references:
 
 ```bash
@@ -296,6 +309,7 @@ ramalama pull oci://quay.io/mmortari/gguf-py-example/v1/example.gguf
 Outputs:
 - All returned `does not exist` in my environment.
 
+### Step 12: Try local OCI conversion
 Then I tried local OCI conversion:
 
 ```bash
@@ -309,6 +323,7 @@ Output:
   - `Failed to create manifest ...`
   - `Tagging build instead`
 
+### Step 13: Verify local OCI image
 I confirmed a local image existed:
 
 ```bash
@@ -319,6 +334,7 @@ podman images | grep -Ei "gemma2b|smollm|oci"
 Output:
 - `localhost/gemma2b latest ...`
 
+### Step 14: Run local OCI model
 Then tried running:
 
 ```bash
@@ -337,6 +353,7 @@ Finding:
 
 ## Additional debugging finding (`ramalama list`)
 
+### Step 15: Debug `ramalama list` crash
 `ramalama list` crashed with:
 
 - `AttributeError: 'str' object has no attribute 'timestamp'`
