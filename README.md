@@ -71,6 +71,9 @@ pip install ramalama
 ```bash
 ramalama version
 ```
+**Output:**
+- `ramalama version 0.18.0`
+
 ![RamaLama version in container](images/method-1-container/06-ramalama-version-in-container.png)
 
 Note: I initially ran `ramalama --version`, but it returned an error in this container flow. Then I used `ramalama version`, which worked.
@@ -85,7 +88,7 @@ curl -fsSL https://ollama.com/install.sh | sh
 
 **Output:**
 - Installer failed first because `zstd` was missing.
-- Key raw line: `ERROR: This version requires zstd for extraction.`
+- Key line: `ERROR: This version requires zstd for extraction.`
 
 ```bash
 apt-get install -y zstd
@@ -93,7 +96,7 @@ apt-get install -y zstd
 
 **Output:**
 - Initially failed with `Unable to locate package zstd`.
-- Key raw line: `E: Unable to locate package zstd`
+- Key line: `E: Unable to locate package zstd`
 
 Then I ran:
 
@@ -107,7 +110,7 @@ ollama --version
 
 **Result:**
 - Ollama installed successfully inside the container.
-- Key raw line: `ollama version ...`
+- Key line: `ollama version ...`
 
 ### Step 8: Pull and run model inside container
 **Goal:** Validate whether model pull/run works in containerized Method 1 flow.
@@ -124,7 +127,7 @@ ramalama run ollama://gemma:2b "What are the Four Foundations of the Fedora proj
 
 **Observed issue:**
 - `Error: [Errno 2] No such file or directory: 'llama-server'`
-- Key raw line: `ramalama run ... -> No such file or directory: 'llama-server'`
+- Key line: `ramalama run ... -> No such file or directory: 'llama-server'`
 
 **Analysis:**
 - Running RamaLama inside a generic Python container was not reliable for my setup.
@@ -177,7 +180,7 @@ ramalama pull ollama://gemma:2b --nocontainer
 
 This failed with:
 - `ramalama: error: unrecognized arguments: --nocontainer`
-- Key raw line: `usage: ramalama ... error: unrecognized arguments: --nocontainer`
+- Key line: `usage: ramalama ... error: unrecognized arguments: --nocontainer`
 
 **Reason:**
 - `--nocontainer` is a global flag and must appear before the subcommand.
@@ -190,7 +193,7 @@ ramalama pull ollama://gemma:2b
 
 **Output:**
 - `Downloaded ollama://library/gemma:2b successfully (1.56 GB).`
-- Key raw lines: `Downloading ollama://library/gemma:2b ...`, `100% ... 1.56 GB`
+- Key lines: `Downloading ollama://library/gemma:2b ...`, `100% ... 1.56 GB`
 
 ### Step 5: Run model from Ollama transport
 **Goal:** Run pulled Ollama model with Fedora Foundations prompt.
@@ -202,7 +205,7 @@ ramalama run ollama://gemma:2b "What are the Four Foundations of the Fedora proj
 - `Error: container create failed ...`
 - `fatal error: fault [SIGSEGV]` from `runc`
 - `Error: Failed to serve model gemma`
-- Key raw line: `fatal error: fault [signal SIGSEGV ...]`
+- Key line: `fatal error: fault [signal SIGSEGV ...]`
 
 **Analysis:**
 - This failure was from container runtime (`runc`) crash, not prompt syntax.
@@ -217,7 +220,7 @@ ramalama --nocontainer run ollama://gemma:2b "What are the Four Foundations of t
 
 **Output:**
 - `Error: [Errno 2] No such file or directory: 'llama-server'`
-- Key raw line: `No such file or directory: 'llama-server'`
+- Key line: `No such file or directory: 'llama-server'`
 
 **Reason:**
 - `--nocontainer` requires a local `llama-server` binary on host.
@@ -243,7 +246,7 @@ ramalama run --oci-runtime crun ollama://gemma:2b "What are the Four Foundations
 
 **Output:**
 - Command executed successfully, but the model response was factually incorrect for Fedora Foundations.
-- Key raw line: model returned non-official foundations (not `Freedom, Friends, Features, First`).
+- Key line: model returned non-official foundations (not `Freedom, Friends, Features, First`).
 
 ### Step 7: Compare additional Ollama models
 **Goal:** Compare answer quality across other Ollama models.
@@ -276,7 +279,7 @@ ramalama run --temp 0 ollama://granite3.1-dense:2b "Give only the official four 
 
 **Output:**
 - Still incorrect.
-- Key raw line example: model returned non-official labels.
+- Key line: model returned non-official labels.
 
 **Finding:**
 - Ollama transport worked technically, but small local models were inconsistent on this Fedora-specific factual question.
@@ -341,7 +344,7 @@ ramalama pull oci://quay.io/mmortari/gguf-py-example/v1/example.gguf
 
 **Outputs:**
 - All returned `does not exist` in my environment.
-- Key raw line: `Error: ... does not exist.`
+- Key line: `Error: ... does not exist.`
 
 ### Step 12: Try local OCI conversion
 **Goal:** Create local OCI model artifact as OCI fallback path.
